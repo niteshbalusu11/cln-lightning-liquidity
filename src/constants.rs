@@ -4,6 +4,7 @@ pub const MESSAGE_TYPE: u16 = 37913u16;
 
 pub const LSPS1_GET_INFO_METHOD: &str = "lsps1.get_info";
 pub const LSPS1_CREATE_ORDER_METHOD: &str = "lsps1.create_order";
+pub const LSPS1_MAX_FEE_PAID: u32 = 100000;
 
 #[derive(Serialize, Deserialize)]
 pub struct GetInfoJsonRpcRequest {
@@ -64,7 +65,7 @@ pub const LSPS1_CREATE_ORDER_CLIENT_SAT_BALANCE: &str = "0";
 pub const LSPS1_CREATE_ORDER_CHANNEL_EXPIRY_BLOCKS: u32 = 13000;
 pub const LSPS1_CREATE_ORDER_TOKEN: &str = "";
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
 #[serde(rename_all = "UPPERCASE")]
 pub enum OrderState {
     Created,
@@ -72,7 +73,7 @@ pub enum OrderState {
     Failed,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
 pub enum PaymentState {
     ExpectPayment,
@@ -81,14 +82,14 @@ pub enum PaymentState {
     Refunded,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct CreateOrderJsonRpcResponse {
     pub id: String,
     pub jsonrpc: String,
     pub result: CreateOrderJsonRpcResponseResult,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct CreateOrderJsonRpcResponseResult {
     pub order_id: String,
     pub lsp_balance_sat: String,
@@ -104,7 +105,7 @@ pub struct CreateOrderJsonRpcResponseResult {
     pub channel: Option<CreateOrderJsonRpcResponseChannel>,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct CreateOrderJsonRpcResponsePayment {
     pub state: PaymentState,
     pub fee_total_sat: String,
@@ -116,14 +117,14 @@ pub struct CreateOrderJsonRpcResponsePayment {
     pub onchain_payment: Option<CreateOrderJsonRpcResponsePaymentOnchainPayment>,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct CreateOrderJsonRpcResponsePaymentOnchainPayment {
     pub outpoint: String,
     pub sat: String,
     pub confirmed: bool,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct CreateOrderJsonRpcResponseChannel {
     pub funded_at: String,
     pub funding_outpoint: String,

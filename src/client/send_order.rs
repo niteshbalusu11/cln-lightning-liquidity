@@ -1,13 +1,19 @@
+use std::sync::Arc;
+
+use cln_plugin::Plugin;
 use cln_rpc::{
     model::requests::{ConnectRequest, NewaddrRequest, SendcustommsgRequest},
     primitives::PublicKey,
     ClnRpc, Request, Response,
 };
 
-use crate::constants::{
-    CreateOrderJsonRpcRequest, CreateOrderJsonRpcRequestParams,
-    LSPS1_CREATE_ORDER_CHANNEL_EXPIRY_BLOCKS, LSPS1_CREATE_ORDER_CLIENT_SAT_BALANCE,
-    LSPS1_CREATE_ORDER_METHOD, LSPS1_CREATE_ORDER_TOKEN, MESSAGE_TYPE,
+use crate::{
+    constants::{
+        CreateOrderJsonRpcRequest, CreateOrderJsonRpcRequestParams,
+        LSPS1_CREATE_ORDER_CHANNEL_EXPIRY_BLOCKS, LSPS1_CREATE_ORDER_CLIENT_SAT_BALANCE,
+        LSPS1_CREATE_ORDER_METHOD, LSPS1_CREATE_ORDER_TOKEN, MESSAGE_TYPE,
+    },
+    PluginState,
 };
 
 use super::utils::{decode_uri, make_id};
@@ -17,9 +23,10 @@ pub struct Lsps1SendOrder {
     pub amount: u64,
     pub blocks: u64,
     pub uri: String,
+    pub plugin: Plugin<Arc<PluginState>>,
 }
 
-impl Lsps1SendOrder {
+impl<'a> Lsps1SendOrder {
     pub async fn send_order(&mut self) -> anyhow::Result<()> {
         let uri = decode_uri(&self.uri)?;
 
@@ -33,6 +40,7 @@ impl Lsps1SendOrder {
             self.blocks as u32,
             &uri.pubkey,
             &refund_address,
+            &self.plugin,
         )
         .await?;
 
@@ -80,7 +88,10 @@ impl Lsps1SendOrder {
         blocks: u32,
         pubkey: &PublicKey,
         refund_address: &str,
+        plugin: &Plugin<Arc<PluginState>>,
     ) -> anyhow::Result<()> {
+        let id = make_id();
+
         let params = CreateOrderJsonRpcRequestParams {
             lsp_balance_sat: amount.to_string(),
             client_balance_sat: LSPS1_CREATE_ORDER_CLIENT_SAT_BALANCE.to_string(),
@@ -95,13 +106,13 @@ impl Lsps1SendOrder {
             jsonrpc: "2.0".to_string(),
             method: LSPS1_CREATE_ORDER_METHOD.to_string(),
             params,
-            id: make_id(),
+            id: id.clone(),
         };
 
         let json_request = serde_json::to_string(&request)?;
 
         // Encode the JSON request to hexadecimal
-        let hex_json_request = hex::encode(json_request);
+        let hex_json_request = hex::encode(json_request.clone());
 
         // Convert the message type 37913 to a 2-byte hexadecimal string
         let message_type_prefix = MESSAGE_TYPE.to_be_bytes(); // Convert to big-endian bytes
@@ -116,6 +127,13 @@ impl Lsps1SendOrder {
                 node_id: *pubkey,
             }))
             .await?;
+
+        let state_ref = plugin.state().clone();
+
+        // Now, you can lock the mutex asynchronously
+        let mut data = state_ref.data.lock().await;
+
+        data.insert(id, json_request);
 
         Ok(())
     }

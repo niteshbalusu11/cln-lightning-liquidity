@@ -1,8 +1,4 @@
-use std::{
-    collections::HashMap,
-    path::Path,
-    sync::{Arc, Mutex},
-};
+use std::{collections::HashMap, path::Path, sync::Arc};
 
 mod client;
 mod constants;
@@ -12,26 +8,29 @@ use cln_plugin::{Builder, Error, Plugin};
 use cln_rpc::ClnRpc;
 use constants::{CreateOrderJsonRpcResponse, GetInfoJsonRpcResponse, MESSAGE_TYPE};
 
-use serde_json::{json, Value};
-use tokio::io::{stdin, stdout};
+use serde_json::json;
+use tokio::{
+    io::{stdin, stdout},
+    sync::Mutex,
+};
 
-// type SharedStore = Arc<Mutex<HashMap<String, Value>>>;
+use crate::client::validate_and_pay::Lsps1ValidateAndPay;
 
-// struct PluginState {
-//     store: SharedStore,
-// }
+struct PluginState {
+    data: Mutex<HashMap<String, String>>,
+}
 
-// impl PluginState {
-//     fn new() -> Self {
-//         PluginState {
-//             store: Arc::new(Mutex::new(HashMap::new())),
-//         }
-//     }
-// }
+impl PluginState {
+    async fn new() -> Result<Self, Error> {
+        Ok(Self {
+            data: Mutex::new(HashMap::new()),
+        })
+    }
+}
 
 #[tokio::main]
 async fn main() -> Result<(), Error> {
-    let state = ();
+    let plugin_state = Arc::new(PluginState::new().await?);
 
     if let Some(plugin) = Builder::new(stdin(), stdout())
         .dynamic()
@@ -41,19 +40,27 @@ async fn main() -> Result<(), Error> {
             lsps1_client,
         )
         .hook("custommsg", subscribe_to_custom_message)
-        .start(state)
+        .start(plugin_state)
         .await?
     {
-        plugin.join().await
+        let plug_res = plugin.join().await;
+
+        plug_res
     } else {
         Ok(())
     }
 }
 
 async fn subscribe_to_custom_message(
-    p: Plugin<()>,
+    p: Plugin<Arc<PluginState>>,
     v: serde_json::Value,
 ) -> Result<serde_json::Value, Error> {
+    // Access the shared data map
+    let state_ref = p.state().clone();
+
+    // Now, you can lock the mutex asynchronously
+    let data = state_ref.data.lock().await;
+
     // Attempt to extract "payload"
     let payload_hex = match v.get("payload").and_then(|v| v.as_str()) {
         Some(payload_hex) => payload_hex,
@@ -104,19 +111,35 @@ async fn subscribe_to_custom_message(
     match serde_json::from_slice::<CreateOrderJsonRpcResponse>(json_bytes) {
         Ok(json_payload) => {
             log::info!("CreateOrder Decoded JSON payload: {:?}", json_payload);
-            json_payload
+
+            let get_order = data.get(&json_payload.id);
+
+            if let Some(order) = get_order {
+                log::info!("GetOrder: {:?}", order);
+
+                let res = Lsps1ValidateAndPay {
+                    order: order.to_string(),
+                    client,
+                    order_response_payload: json_payload,
+                }
+                .validate_and_pay()
+                .await;
+
+                match res {
+                    Ok(_) => {
+                        log::info!("Order validated and paid");
+                    }
+                    Err(e) => {
+                        log::warn!("Order validation and payment failed: {}", e);
+                    }
+                }
+            }
+
+            return Ok(json!({ "result": "continue" }));
         }
         Err(e) => {
             log::warn!("CreateOrder Failed to decode JSON payload: {}", e);
             return Ok(json!({ "result": "continue" }));
         }
     };
-
-    // Attempt to extract "peer_id"
-    // let peer_id = v.get("peer_id").and_then(|v| v.as_str());
-
-    // Continue with your intended response regardless of issues
-    Ok(json!({
-        "result": "continue"
-    }))
 }

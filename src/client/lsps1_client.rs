@@ -1,4 +1,4 @@
-use std::path::Path;
+use std::{path::Path, sync::Arc};
 
 use anyhow::bail;
 use cln_plugin::{Error, Plugin};
@@ -6,7 +6,10 @@ use cln_rpc::ClnRpc;
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 
-use crate::client::{get_info::Lsps1GetInfo, send_order::Lsps1SendOrder};
+use crate::{
+    client::{get_info::Lsps1GetInfo, send_order::Lsps1SendOrder},
+    PluginState,
+};
 
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
@@ -23,15 +26,16 @@ fn str_to_buy_request_type(s: &str) -> Option<BuyRequestTypes> {
         // Ensure matching is case-insensitive
         "help" => Some(BuyRequestTypes::Help),
         "buy" => Some(BuyRequestTypes::Buy),
-        "dryrun" => Some(BuyRequestTypes::Dryrun),
         "getinfo" => Some(BuyRequestTypes::GetInfo),
         "getstatus" => Some(BuyRequestTypes::GetStatus),
         _ => None,
     }
 }
 
-pub async fn lsps1_client(p: Plugin<()>, v: serde_json::Value) -> Result<serde_json::Value, Error> {
-    log::info!("Received request: {:?}", v);
+pub async fn lsps1_client(
+    p: Plugin<Arc<PluginState>>,
+    v: serde_json::Value,
+) -> Result<serde_json::Value, Error> {
     let conf = p.configuration();
     let socket_path = Path::new(&conf.lightning_dir).join(&conf.rpc_file);
     let client = ClnRpc::new(socket_path).await?;
@@ -76,6 +80,7 @@ pub async fn lsps1_client(p: Plugin<()>, v: serde_json::Value) -> Result<serde_j
                 amount,
                 blocks,
                 uri: uri_str.to_string(),
+                plugin: p,
             }
             .send_order()
             .await?;
