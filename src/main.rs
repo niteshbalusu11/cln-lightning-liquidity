@@ -1,15 +1,33 @@
-use std::path::Path;
+use std::{
+    collections::HashMap,
+    path::Path,
+    sync::{Arc, Mutex},
+};
 
 mod client;
 mod constants;
-use anyhow::bail;
+
+use client::lsps1_client::lsps1_client;
 use cln_plugin::{Builder, Error, Plugin};
 use cln_rpc::ClnRpc;
-use constants::MESSAGE_TYPE;
-use serde_json::json;
+use constants::{CreateOrderJsonRpcResponse, GetInfoJsonRpcResponse, MESSAGE_TYPE};
+
+use serde_json::{json, Value};
 use tokio::io::{stdin, stdout};
 
-use crate::client::get_info::GetInfo;
+// type SharedStore = Arc<Mutex<HashMap<String, Value>>>;
+
+// struct PluginState {
+//     store: SharedStore,
+// }
+
+// impl PluginState {
+//     fn new() -> Self {
+//         PluginState {
+//             store: Arc::new(Mutex::new(HashMap::new())),
+//         }
+//     }
+// }
 
 #[tokio::main]
 async fn main() -> Result<(), Error> {
@@ -30,78 +48,6 @@ async fn main() -> Result<(), Error> {
     } else {
         Ok(())
     }
-}
-
-async fn lsps1_client(p: Plugin<()>, v: serde_json::Value) -> Result<serde_json::Value, Error> {
-    log::info!("Received request: {:?}", v);
-    let conf = p.configuration();
-    let socket_path = Path::new(&conf.lightning_dir).join(&conf.rpc_file);
-    let client = ClnRpc::new(socket_path).await?;
-
-    if v["request"].as_str() == Some("help") {
-        return Ok(json!({
-            "cli_params": {
-                "amount": "<number> enter the channel size you want to buy",
-                "blocks": "<number> enter the number of blocks you want to wait for the channel to be confirmed",
-                "getinfo": "returns info from nodes selling channels",
-                "order_status": "<order_id> returns the status of the order",
-                "uri": "<uri> pubkey@host:port",
-            }
-        }));
-    }
-
-    if v["request"].as_str() == Some("getinfo") {
-        let uri_str = match v["uri"].as_str() {
-            Some(uri) => uri,
-            None => {
-                bail!("Invalid URI")
-            }
-        };
-        GetInfo {
-            client,
-            uri: uri_str.to_string(),
-        }
-        .lsps1_client()
-        .await?;
-
-        return Ok(json!({
-            "result": "success"
-        }));
-    }
-
-    if v["request"].as_str() == Some("buy") {
-        let amount = match v["amount"].as_u64() {
-            Some(amount) => amount,
-            None => {
-                bail!("Invalid amount")
-            }
-        };
-
-        let blocks = match v["blocks"].as_u64() {
-            Some(blocks) => blocks,
-            None => {
-                bail!("Invalid blocks")
-            }
-        };
-
-        let uri_str = match v["uri"].as_str() {
-            Some(uri) => uri,
-            None => {
-                bail!("Invalid URI")
-            }
-        };
-
-        // client::buy::buy_channel(client, amount, blocks, uri_str).await?;
-
-        return Ok(json!({
-            "result": "success"
-        }));
-    }
-
-    return Ok(json!({
-        "result": "error",
-        "message": "Invalid request"
-    }));
 }
 
 async fn subscribe_to_custom_message(
@@ -139,23 +85,32 @@ async fn subscribe_to_custom_message(
         return Ok(json!({ "result": "continue" }));
     }
 
-    // Extract the JSON payload starting from the 3rd byte
-    let json_bytes = &bytes[2..];
-
-    let json_payload = match serde_json::from_slice::<serde_json::Value>(json_bytes) {
-        Ok(json_payload) => {
-            log::info!("Decoded JSON payload: {:?}", json_payload);
-            json_payload
-        }
-        Err(e) => {
-            log::warn!("Failed to decode JSON payload: {}", e);
-            return Ok(json!({ "result": "continue" }));
-        }
-    };
-
     let conf = p.configuration();
     let socket_path = Path::new(&conf.lightning_dir).join(&conf.rpc_file);
     let client = ClnRpc::new(socket_path).await?;
+
+    // Extract the JSON payload starting from the 3rd byte
+    let json_bytes = &bytes[2..];
+
+    match serde_json::from_slice::<GetInfoJsonRpcResponse>(json_bytes) {
+        Ok(json_payload) => {
+            log::info!("GetInfo Decoded JSON payload: {:?}", json_payload)
+        }
+        Err(e) => {
+            log::warn!("GetInfo Failed to decode JSON payload: {}", e)
+        }
+    };
+
+    match serde_json::from_slice::<CreateOrderJsonRpcResponse>(json_bytes) {
+        Ok(json_payload) => {
+            log::info!("CreateOrder Decoded JSON payload: {:?}", json_payload);
+            json_payload
+        }
+        Err(e) => {
+            log::warn!("CreateOrder Failed to decode JSON payload: {}", e);
+            return Ok(json!({ "result": "continue" }));
+        }
+    };
 
     // Attempt to extract "peer_id"
     // let peer_id = v.get("peer_id").and_then(|v| v.as_str());
