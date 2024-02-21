@@ -59,7 +59,7 @@ pub async fn lsps1_client(
                     "method": "Method can be one of the following: (help, buy, getinfo, getorder)",
                     "amount": "<number> enter the channel size you want to buy",
                     "blocks": "<number> enter the number of blocks you want to wait for the channel to be confirmed",
-                    "getinfo": "returns info from nodes selling channels",
+                    "type": "<private/public> the type of channel you want to buy",
                     "orderid": "<orderid> returns the status of the order",
                     "uri": "<uri> pubkey@host:port",
                 }
@@ -87,12 +87,28 @@ pub async fn lsps1_client(
                 }
             };
 
+            let is_public_channel = match v["type"].as_str() {
+                Some(t) => {
+                    if t.to_lowercase() == "private" {
+                        false
+                    } else if t.to_lowercase() == "public" {
+                        true
+                    } else {
+                        bail!("Invalid channel type")
+                    }
+                }
+                None => {
+                    bail!("Invalid type")
+                }
+            };
+
             Lsps1SendOrder {
-                client,
                 amount,
                 blocks,
-                uri: uri_str.to_string(),
+                client,
+                is_public_channel,
                 plugin: p,
+                uri: uri_str.to_string(),
             }
             .send_order()
             .await?;

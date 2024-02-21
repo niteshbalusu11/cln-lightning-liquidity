@@ -20,6 +20,7 @@ use super::utils::{decode_uri, make_id};
 
 pub struct Lsps1SendOrder {
     pub client: ClnRpc,
+    pub is_public_channel: bool,
     pub amount: u64,
     pub blocks: u64,
     pub uri: String,
@@ -48,6 +49,7 @@ impl Lsps1SendOrder {
             &uri.pubkey,
             &refund_address,
             &self.plugin,
+            self.is_public_channel,
         )
         .await?;
 
@@ -96,6 +98,7 @@ impl Lsps1SendOrder {
         pubkey: &PublicKey,
         refund_address: &str,
         plugin: &Plugin<Arc<PluginState>>,
+        is_public_channel: bool,
     ) -> anyhow::Result<()> {
         let id = make_id();
 
@@ -105,7 +108,7 @@ impl Lsps1SendOrder {
             confirms_within_blocks: blocks,
             channel_expiry_blocks: LSPS1_CREATE_ORDER_CHANNEL_EXPIRY_BLOCKS,
             token: LSPS1_CREATE_ORDER_TOKEN.to_string(),
-            announce_channel: true,
+            announce_channel: is_public_channel,
             refund_onchain_address: refund_address.to_string(),
         };
 

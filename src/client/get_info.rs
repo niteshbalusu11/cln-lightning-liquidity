@@ -23,24 +23,17 @@ pub struct Lsps1GetInfo {
 // This method now belongs to an instance of GetInfo and uses its data
 impl<'a> Lsps1GetInfo {
     pub async fn get_info(&mut self) -> anyhow::Result<()> {
-        log::info!("inside getinfo");
         let state_ref = self.plugin.state();
 
         let mut method = state_ref.method.lock().await;
-        log::info!("inside getinfo method lock");
 
         // Set the state to get info so that
         // The subscribtion side knows what to do
         *method = PluginMethodState::GetInfo;
 
-        log::info!("inside getinfo decoding uri");
-
         let uri = decode_uri(&self.uri)?;
 
-        log::info!("inside getinfo connecting to peer");
         Self::connect(&mut self.client, &uri.pubkey, &uri.host, &uri.port).await?;
-
-        log::info!("inside getinfo sending getinfo message");
 
         Self::send_get_info_message(&mut self.client, &uri.pubkey).await?;
 
