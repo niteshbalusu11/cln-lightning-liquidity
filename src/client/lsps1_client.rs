@@ -45,11 +45,12 @@ pub async fn lsps1_client(
 
     // Set the method to blank
     // Its later updated based on the method
-    // let state_ref = p.state().clone();
+    let state_ref = p.state().clone();
 
-    // let mut method = state_ref.method.lock().await;
+    let mut method = state_ref.method.lock().await;
 
-    // *method = PluginMethodState::None;
+    *method = PluginMethodState::None;
+    std::mem::drop(method);
 
     match v["request"].as_str().and_then(str_to_buy_request_type) {
         Some(BuyRequestTypes::Help) => {
@@ -120,10 +121,10 @@ pub async fn lsps1_client(
             }));
         }
         Some(BuyRequestTypes::GetOrder) => {
-            let order_id = match v["order_id"].as_str() {
+            let order_id = match v["orderid"].as_str() {
                 Some(order_id) => order_id,
                 None => {
-                    bail!("Invalid order_id")
+                    bail!("Invalid orderid")
                 }
             };
 
