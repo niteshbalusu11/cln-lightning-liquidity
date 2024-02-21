@@ -26,7 +26,6 @@ pub async fn subscribe_to_custom_message(
     let payload_hex = match v.get("payload").and_then(|v| v.as_str()) {
         Some(payload_hex) => payload_hex,
         None => {
-            log::warn!("No payload found in custom message");
             return Ok(json!({ "result": "continue" }));
         }
     };
@@ -60,10 +59,7 @@ pub async fn subscribe_to_custom_message(
     // Get info response method
     match serde_json::from_slice::<GetInfoJsonRpcResponse>(json_bytes) {
         Ok(json_payload) => {
-            log::info!(
-                "GetInfo Response: {:?}",
-                serde_json::to_string_pretty(&json_payload)
-            )
+            log::info!("GetInfo Response: {:?}", &json_payload)
         }
         _ => {}
     };
@@ -72,16 +68,10 @@ pub async fn subscribe_to_custom_message(
     match serde_json::from_slice::<CreateOrderJsonRpcResponse>(json_bytes) {
         Ok(json_payload) => match *method {
             PluginMethodState::GetOrder => {
-                log::info!(
-                    "GetOrder Response: {:?}",
-                    serde_json::to_string_pretty(&json_payload)
-                );
+                log::info!("GetOrder Response: {:?}", &json_payload);
             }
             PluginMethodState::SendOrder => {
-                log::info!(
-                    "CreateOrder Response: {:?}",
-                    serde_json::to_string_pretty(&json_payload)
-                );
+                log::info!("CreateOrder Response: {:?}", &json_payload);
 
                 let get_order = data.get(&json_payload.id);
 

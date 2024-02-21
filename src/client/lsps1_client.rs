@@ -52,7 +52,7 @@ pub async fn lsps1_client(
     *method = PluginMethodState::None;
     std::mem::drop(method);
 
-    match v["request"].as_str().and_then(str_to_buy_request_type) {
+    match v["method"].as_str().and_then(str_to_buy_request_type) {
         Some(BuyRequestTypes::Help) => {
             return Ok(json!({
                 "cli_params": {

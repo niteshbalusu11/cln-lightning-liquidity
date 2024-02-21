@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Step 1: Build inside the container
-docker exec -it -w /workspaces/cln-lightning-liquidity festive_jackson cargo build
+docker exec -it -w /workspaces/cln-lightning-liquidity festive_jackson cargo build --release
 
 # Check if the build was successful before proceeding
 if [ $? -ne 0 ]; then
@@ -10,7 +10,7 @@ if [ $? -ne 0 ]; then
 fi
 
 # Define source and destination paths
-SOURCE_PATH="./target/debug/cln-lightning-liquidity"
+SOURCE_PATH="./target/release/cln-lightning-liquidity"
 DESTINATION_PATH="/Users/niteshchowdharybalusu/.polar/networks/1/volumes/c-lightning/alice/lightningd/cln-lightning-liquidity"
 
 # Step 2: Copy the file, replacing it if it exists
