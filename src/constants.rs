@@ -7,6 +7,26 @@ pub const LSPS1_CREATE_ORDER_METHOD: &str = "lsps1.create_order";
 pub const LSPS1_GET_ORDER_METHOD: &str = "lsps1.get_order";
 pub const LSPS1_MAX_FEE_PAID: u32 = 100000;
 
+pub enum PluginMethodState {
+    None,
+    GetInfo,
+    SendOrder,
+    GetOrder,
+    // Add other states as needed
+}
+
+impl ToString for PluginMethodState {
+    fn to_string(&self) -> String {
+        match self {
+            PluginMethodState::None => "None".to_string(),
+            PluginMethodState::GetInfo => "GetInfo".to_string(),
+            PluginMethodState::SendOrder => "SendOrder".to_string(),
+            PluginMethodState::GetOrder => "GetOrder".to_string(),
+            // Handle other states
+        }
+    }
+}
+
 #[derive(Serialize, Deserialize)]
 pub struct GetInfoJsonRpcRequest {
     pub jsonrpc: String,

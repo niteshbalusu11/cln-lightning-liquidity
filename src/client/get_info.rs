@@ -8,7 +8,7 @@ use cln_rpc::{
 };
 
 use crate::{
-    constants::{GetInfoJsonRpcRequest, LSPS1_GET_INFO_METHOD, MESSAGE_TYPE},
+    constants::{GetInfoJsonRpcRequest, PluginMethodState, LSPS1_GET_INFO_METHOD, MESSAGE_TYPE},
     PluginState,
 };
 
@@ -20,16 +20,18 @@ pub struct Lsps1GetInfo {
     pub plugin: Plugin<Arc<PluginState>>,
 }
 
-impl Lsps1GetInfo {
-    // This method now belongs to an instance of GetInfo and uses its data
+// This method now belongs to an instance of GetInfo and uses its data
+impl<'a> Lsps1GetInfo {
     pub async fn get_info(&mut self) -> anyhow::Result<()> {
         log::info!("inside getinfo");
-        let state_ref = self.plugin.state().clone();
+        let state_ref = self.plugin.state();
 
         let mut method = state_ref.method.lock().await;
+        log::info!("inside getinfo method lock");
+
         // Set the state to get info so that
         // The subscribtion side knows what to do
-        method.insert("method".to_string(), LSPS1_GET_INFO_METHOD.to_string());
+        *method = PluginMethodState::GetInfo;
 
         log::info!("inside getinfo decoding uri");
 

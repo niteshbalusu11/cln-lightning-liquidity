@@ -9,7 +9,8 @@ use cln_rpc::{
 
 use crate::{
     constants::{
-        GetOrderJsonRpcRequest, GetOrderJsonRpcRequestParams, LSPS1_GET_ORDER_METHOD, MESSAGE_TYPE,
+        GetOrderJsonRpcRequest, GetOrderJsonRpcRequestParams, PluginMethodState,
+        LSPS1_GET_ORDER_METHOD, MESSAGE_TYPE,
     },
     PluginState,
 };
@@ -23,16 +24,16 @@ pub struct Lsps1GetOrder {
     pub plugin: Plugin<Arc<PluginState>>,
 }
 
-impl Lsps1GetOrder {
+impl<'a> Lsps1GetOrder {
     pub async fn get_order(&mut self) -> anyhow::Result<()> {
         log::info!("inside getorder {}", self.uri);
 
-        let state_ref = self.plugin.state().clone();
+        let state_ref = self.plugin.state();
 
         let mut method = state_ref.method.lock().await;
         // Set the state to get order so that
         // The subscribtion side knows what to do
-        method.insert("method".to_string(), LSPS1_GET_ORDER_METHOD.to_string());
+        *method = PluginMethodState::GetOrder;
 
         let uri = decode_uri(&self.uri)?;
 

@@ -8,6 +8,7 @@ use serde_json::json;
 
 use crate::{
     client::{get_info::Lsps1GetInfo, send_order::Lsps1SendOrder},
+    constants::PluginMethodState,
     PluginState,
 };
 
@@ -20,7 +21,7 @@ enum BuyRequestTypes {
     Buy,
     Dryrun,
     GetInfo,
-    GetStatus,
+    GetOrder,
 }
 
 fn str_to_buy_request_type(s: &str) -> Option<BuyRequestTypes> {
@@ -29,7 +30,7 @@ fn str_to_buy_request_type(s: &str) -> Option<BuyRequestTypes> {
         "help" => Some(BuyRequestTypes::Help),
         "buy" => Some(BuyRequestTypes::Buy),
         "getinfo" => Some(BuyRequestTypes::GetInfo),
-        "getstatus" => Some(BuyRequestTypes::GetStatus),
+        "getorder" => Some(BuyRequestTypes::GetOrder),
         _ => None,
     }
 }
@@ -47,17 +48,18 @@ pub async fn lsps1_client(
     // let state_ref = p.state().clone();
 
     // let mut method = state_ref.method.lock().await;
-    // method.insert("method".to_string(), "none".to_string());
+
+    // *method = PluginMethodState::None;
 
     match v["request"].as_str().and_then(str_to_buy_request_type) {
         Some(BuyRequestTypes::Help) => {
             return Ok(json!({
                 "cli_params": {
-                    "method": "Method can be one of the following: (help, buy, getinfo, getstatus)",
+                    "method": "Method can be one of the following: (help, buy, getinfo, getorder)",
                     "amount": "<number> enter the channel size you want to buy",
                     "blocks": "<number> enter the number of blocks you want to wait for the channel to be confirmed",
                     "getinfo": "returns info from nodes selling channels",
-                    "order_id": "<order_id> returns the status of the order",
+                    "orderid": "<orderid> returns the status of the order",
                     "uri": "<uri> pubkey@host:port",
                 }
             }));
@@ -117,7 +119,7 @@ pub async fn lsps1_client(
                 "result": "success"
             }));
         }
-        Some(BuyRequestTypes::GetStatus) => {
+        Some(BuyRequestTypes::GetOrder) => {
             let order_id = match v["order_id"].as_str() {
                 Some(order_id) => order_id,
                 None => {

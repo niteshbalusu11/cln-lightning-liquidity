@@ -6,7 +6,9 @@ mod constants;
 use client::lsps1_client::lsps1_client;
 use cln_plugin::{Builder, Error, Plugin};
 use cln_rpc::ClnRpc;
-use constants::{CreateOrderJsonRpcResponse, GetInfoJsonRpcResponse, MESSAGE_TYPE};
+use constants::{
+    CreateOrderJsonRpcResponse, GetInfoJsonRpcResponse, PluginMethodState, MESSAGE_TYPE,
+};
 
 use serde_json::json;
 use tokio::{
@@ -14,21 +16,18 @@ use tokio::{
     sync::Mutex,
 };
 
-use crate::{
-    client::validate_and_pay::Lsps1ValidateAndPay,
-    constants::{LSPS1_CREATE_ORDER_METHOD, LSPS1_GET_ORDER_METHOD},
-};
+use crate::client::validate_and_pay::Lsps1ValidateAndPay;
 
 struct PluginState {
     data: Mutex<HashMap<String, String>>,
-    method: Mutex<HashMap<String, String>>,
+    method: Mutex<PluginMethodState>,
 }
 
 impl PluginState {
     async fn new() -> Result<Self, Error> {
         Ok(Self {
             data: Mutex::new(HashMap::new()),
-            method: Mutex::new(HashMap::new()),
+            method: Mutex::new(PluginMethodState::None),
         })
     }
 }
@@ -101,62 +100,45 @@ async fn subscribe_to_custom_message(
     // Extract the JSON payload starting from the 3rd byte
     let json_bytes = &bytes[2..];
 
-    // Get info method response
+    // Get info response method
     match serde_json::from_slice::<GetInfoJsonRpcResponse>(json_bytes) {
         Ok(json_payload) => {
             log::info!("GetInfo Decoded JSON payload: {:?}", json_payload)
         }
-        Err(e) => {
-            log::warn!("GetInfo Failed to decode JSON payload: {}", e)
-        }
+        _ => {}
     };
 
-    // Get order response method
-    // Get order and create order have the same response from server
+    // Create order/get order response method
     match serde_json::from_slice::<CreateOrderJsonRpcResponse>(json_bytes) {
-        Ok(json_payload) => {
-            if method.get(&"method".to_string()) == Some(&LSPS1_GET_ORDER_METHOD.to_string()) {
+        Ok(json_payload) => match *method {
+            PluginMethodState::GetOrder => {
                 log::info!("GetOrder Decoded JSON payload: {:?}", json_payload);
             }
-        }
-        Err(e) => {
-            log::warn!("CreateOrder Failed to decode JSON payload: {}", e);
-        }
-    };
+            PluginMethodState::SendOrder => {
+                let get_order = data.get(&json_payload.id);
 
-    // Create order response method
-    match serde_json::from_slice::<CreateOrderJsonRpcResponse>(json_bytes) {
-        Ok(json_payload) => {
-            if method.get(&"method".to_string()) != Some(&LSPS1_CREATE_ORDER_METHOD.to_string()) {
-                return Ok(json!({ "result": "continue" }));
-            }
-
-            log::info!("CreateOrder Decoded JSON payload: {:?}", json_payload);
-
-            let get_order = data.get(&json_payload.id);
-
-            if let Some(order) = get_order {
-                let res = Lsps1ValidateAndPay {
-                    order: order.to_string(),
-                    client,
-                    order_response_payload: json_payload,
-                }
-                .validate_and_pay()
-                .await;
-
-                match res {
-                    Ok(_) => {
-                        log::info!("Order validated and paid");
+                if let Some(order) = get_order {
+                    let res = Lsps1ValidateAndPay {
+                        order: order.to_string(),
+                        client,
+                        order_response_payload: json_payload,
                     }
-                    Err(e) => {
-                        log::error!("Order validation and payment failed: {}", e);
+                    .validate_and_pay()
+                    .await;
+
+                    match res {
+                        Ok(_) => {
+                            log::info!("Order validated and paid");
+                        }
+                        Err(e) => {
+                            log::error!("Order validation and payment failed: {}", e);
+                        }
                     }
                 }
             }
-        }
-        Err(e) => {
-            log::warn!("CreateOrder Failed to decode JSON payload: {}", e);
-        }
+            _ => {}
+        },
+        _ => {}
     };
 
     return Ok(json!({ "result": "continue" }));

@@ -9,7 +9,7 @@ use cln_rpc::{
 
 use crate::{
     constants::{
-        CreateOrderJsonRpcRequest, CreateOrderJsonRpcRequestParams,
+        CreateOrderJsonRpcRequest, CreateOrderJsonRpcRequestParams, PluginMethodState,
         LSPS1_CREATE_ORDER_CHANNEL_EXPIRY_BLOCKS, LSPS1_CREATE_ORDER_CLIENT_SAT_BALANCE,
         LSPS1_CREATE_ORDER_METHOD, LSPS1_CREATE_ORDER_TOKEN, MESSAGE_TYPE,
     },
@@ -28,12 +28,12 @@ pub struct Lsps1SendOrder {
 
 impl Lsps1SendOrder {
     pub async fn send_order(&mut self) -> anyhow::Result<()> {
-        let state_ref = self.plugin.state().clone();
+        let state_ref = self.plugin.state();
 
         let mut method = state_ref.method.lock().await;
         // Set the state to get info so that
         // The subscribtion side knows what to do
-        method.insert("method".to_string(), LSPS1_CREATE_ORDER_METHOD.to_string());
+        *method = PluginMethodState::SendOrder;
 
         let uri = decode_uri(&self.uri)?;
 
