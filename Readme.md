@@ -1,6 +1,6 @@
 # cln-lightning-liquidity
 
-### Buy lightning channels from any node on the network selling using [lsps1](https://github.com/BitcoinAndLightningLayerSpecs/lsp) protocol.
+### Buy lightning channels on a core-lightning node from any node on the network selling using [lsps1](https://github.com/BitcoinAndLightningLayerSpecs/lsp) protocol.
 
 - Here's a website showing the current offers: [https://sparkseer.space/chanoffers](https://sparkseer.space/chanoffers)
 - Tools compatible for LND [BalanceOfSatoshis](https://github.com/alexbosworth/balanceofsatoshis)
