@@ -85,7 +85,6 @@ impl Lsps1ValidateAndPay {
         }
 
         // Pay in the invoice
-
         let res = self
             .client
             .call(Request::Pay(PayRequest {
@@ -106,7 +105,7 @@ impl Lsps1ValidateAndPay {
 
         match res {
             Response::Pay(n) => {
-                log::info!("Payment response: {:?}", n);
+                log::info!("Invoice Paid Payment response: {:?}", n);
             }
             _ => {
                 bail!("Invalid response");

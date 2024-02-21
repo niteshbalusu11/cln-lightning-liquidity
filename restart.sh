@@ -31,7 +31,7 @@ PLUGIN_PATH="/home/clightning/.lightning/cln-lightning-liquidity"
 docker exec -it polar-n1-alice lightning-cli --rpc-file=$RPC_FILE_PATH -k plugin subcommand=stop plugin=$PLUGIN_PATH
 if [ $? -ne 0 ]; then
     echo "Failed to stop the plugin. Check the lightning-cli command and paths."
-    exit 1
+    # exit 1
 fi
 
 # Start the plugin

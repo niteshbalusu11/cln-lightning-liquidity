@@ -4,6 +4,7 @@ pub const MESSAGE_TYPE: u16 = 37913u16;
 
 pub const LSPS1_GET_INFO_METHOD: &str = "lsps1.get_info";
 pub const LSPS1_CREATE_ORDER_METHOD: &str = "lsps1.create_order";
+pub const LSPS1_GET_ORDER_METHOD: &str = "lsps1.get_order";
 pub const LSPS1_MAX_FEE_PAID: u32 = 100000;
 
 #[derive(Serialize, Deserialize)]
@@ -129,4 +130,17 @@ pub struct CreateOrderJsonRpcResponseChannel {
     pub funded_at: String,
     pub funding_outpoint: String,
     pub expires_at: String,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct GetOrderJsonRpcRequest {
+    pub id: String,
+    pub jsonrpc: String,
+    pub method: String,
+    pub params: GetOrderJsonRpcRequestParams,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct GetOrderJsonRpcRequestParams {
+    pub order_id: String,
 }

@@ -11,6 +11,8 @@ use crate::{
     PluginState,
 };
 
+use super::get_order::Lsps1GetOrder;
+
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
 enum BuyRequestTypes {
@@ -40,11 +42,18 @@ pub async fn lsps1_client(
     let socket_path = Path::new(&conf.lightning_dir).join(&conf.rpc_file);
     let client = ClnRpc::new(socket_path).await?;
 
+    // Set the method to blank
+    // Its later updated based on the method
+    // let state_ref = p.state().clone();
+
+    // let mut method = state_ref.method.lock().await;
+    // method.insert("method".to_string(), "none".to_string());
+
     match v["request"].as_str().and_then(str_to_buy_request_type) {
         Some(BuyRequestTypes::Help) => {
             return Ok(json!({
                 "cli_params": {
-                    "method": "Method can be one of the following: (help, buy, dryrun, getinfo, getstatus)",
+                    "method": "Method can be one of the following: (help, buy, getinfo, getstatus)",
                     "amount": "<number> enter the channel size you want to buy",
                     "blocks": "<number> enter the number of blocks you want to wait for the channel to be confirmed",
                     "getinfo": "returns info from nodes selling channels",
@@ -99,8 +108,37 @@ pub async fn lsps1_client(
             Lsps1GetInfo {
                 client,
                 uri: uri_str.to_string(),
+                plugin: p,
             }
-            .lsps1_client()
+            .get_info()
+            .await?;
+
+            return Ok(json!({
+                "result": "success"
+            }));
+        }
+        Some(BuyRequestTypes::GetStatus) => {
+            let order_id = match v["order_id"].as_str() {
+                Some(order_id) => order_id,
+                None => {
+                    bail!("Invalid order_id")
+                }
+            };
+
+            let uri_str = match v["uri"].as_str() {
+                Some(uri) => uri,
+                None => {
+                    bail!("Invalid URI")
+                }
+            };
+
+            Lsps1GetOrder {
+                client,
+                uri: uri_str.to_string(),
+                order_id: order_id.to_string(),
+                plugin: p,
+            }
+            .get_order()
             .await?;
 
             return Ok(json!({

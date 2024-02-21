@@ -8,39 +8,37 @@ use cln_rpc::{
 };
 
 use crate::{
-    constants::{GetInfoJsonRpcRequest, LSPS1_GET_INFO_METHOD, MESSAGE_TYPE},
+    constants::{
+        GetOrderJsonRpcRequest, GetOrderJsonRpcRequestParams, LSPS1_GET_ORDER_METHOD, MESSAGE_TYPE,
+    },
     PluginState,
 };
 
 use super::utils::{decode_uri, make_id};
 
-pub struct Lsps1GetInfo {
+pub struct Lsps1GetOrder {
     pub client: ClnRpc,
     pub uri: String,
+    pub order_id: String,
     pub plugin: Plugin<Arc<PluginState>>,
 }
 
-impl Lsps1GetInfo {
-    // This method now belongs to an instance of GetInfo and uses its data
-    pub async fn get_info(&mut self) -> anyhow::Result<()> {
-        log::info!("inside getinfo");
+impl Lsps1GetOrder {
+    pub async fn get_order(&mut self) -> anyhow::Result<()> {
+        log::info!("inside getorder {}", self.uri);
+
         let state_ref = self.plugin.state().clone();
 
         let mut method = state_ref.method.lock().await;
-        // Set the state to get info so that
+        // Set the state to get order so that
         // The subscribtion side knows what to do
-        method.insert("method".to_string(), LSPS1_GET_INFO_METHOD.to_string());
-
-        log::info!("inside getinfo decoding uri");
+        method.insert("method".to_string(), LSPS1_GET_ORDER_METHOD.to_string());
 
         let uri = decode_uri(&self.uri)?;
 
-        log::info!("inside getinfo connecting to peer");
         Self::connect(&mut self.client, &uri.pubkey, &uri.host, &uri.port).await?;
 
-        log::info!("inside getinfo sending getinfo message");
-
-        Self::send_get_info_message(&mut self.client, &uri.pubkey).await?;
+        Self::send_get_order_message(&mut self.client, &uri.pubkey, &self.order_id).await?;
 
         Ok(())
     }
@@ -63,11 +61,19 @@ impl Lsps1GetInfo {
         Ok(())
     }
 
-    async fn send_get_info_message(client: &mut ClnRpc, pubkey: &PublicKey) -> anyhow::Result<()> {
-        let request = GetInfoJsonRpcRequest {
+    async fn send_get_order_message(
+        client: &mut ClnRpc,
+        pubkey: &PublicKey,
+        order_id: &str,
+    ) -> anyhow::Result<()> {
+        let params = GetOrderJsonRpcRequestParams {
+            order_id: order_id.to_string(),
+        };
+
+        let request = GetOrderJsonRpcRequest {
             jsonrpc: "2.0".to_string(),
-            method: LSPS1_GET_INFO_METHOD.to_string(),
-            params: serde_json::json!({}), // Creating an empty object for params.
+            method: LSPS1_GET_ORDER_METHOD.to_string(),
+            params,
             id: make_id(),
         };
 
